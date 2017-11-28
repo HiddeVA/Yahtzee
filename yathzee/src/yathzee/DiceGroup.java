@@ -68,8 +68,9 @@ public class DiceGroup
 	
 	public void lockDie(double xPos, double yPos)
 	{
-		if (yPos < vMargin || yPos > vMargin + size) return;
-		if (xPos - hMargin % (hGap + size) < hGap || xPos - hMargin > (hGap + size) * dice.length) return;
+		if (yPos < vMargin || yPos > vMargin + size) return; //above & below dice
+		if (xPos < hMargin || xPos > hMargin + (size + hGap) * dice.length) return; //before & after dice
+		if ((xPos - hMargin) % (size + hGap) > size) return; //inbetween dice
 		int i = (int)((xPos - hMargin) / (hGap + size));
 		dice[i].switchLocked();
 	}

@@ -4,7 +4,6 @@ import javafx.scene.canvas.*;
 import javafx.scene.paint.Color;
 import java.util.Random;
 
-
 //-----------------------------------------------------
 //Deze class maakt een dobbelsteen aan. GraphicsContext vereist als parameter
 //In de constructor moet positie en grootte meegegeven worden

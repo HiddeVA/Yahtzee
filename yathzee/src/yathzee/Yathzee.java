@@ -1,15 +1,16 @@
 package yathzee;
 
+import java.sql.*;
 import javafx.application.*;
 import javafx.scene.*;
 import javafx.scene.canvas.*;
 import javafx.scene.control.*;
-import javafx.scene.control.Alert.AlertType;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.control.Alert.*;
+import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
-import javafx.stage.Stage;
+import javafx.stage.*;
 import javafx.event.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -22,6 +23,10 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 	int fieldsLeft = 13;
 	int upperscore = 0;
 	int lowerscore = 0;
+	int yathzees = 0;
+	final int numDice = 5;
+	String username = "Hidde";
+	Button rollDice;
 	
 	public static void main(String[] args)
 	{
@@ -46,10 +51,19 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 			numRolls = 0;
 			lblRollsLeft.setText("3");
 			dg.unlockAll();
+			rollDice.setDisable(false);
+			yathzees = 0;
 		});
+		miNewGame.setAccelerator(new KeyCodeCombination(KeyCode.N, KeyCombination.CONTROL_DOWN));
 		MenuItem miHiScores = new MenuItem("Hiscores");
+		miHiScores.setOnAction(e->showHiscores(stage));
+		miHiScores.setAccelerator(new KeyCodeCombination(KeyCode.H, KeyCombination.CONTROL_DOWN));
 		menuGame.getItems().addAll(miNewGame, miHiScores);
 		Menu menuSettings = new Menu("Settings");
+		MenuItem miSettings = new MenuItem("Change name");
+		miSettings.setAccelerator(new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN));
+		miSettings.setOnAction(e->openSettings(stage));
+		menuSettings.getItems().addAll(miSettings);
 		menu.getMenus().addAll(menuGame, menuSettings);
 		root.setTop(menu);
 		
@@ -74,14 +88,14 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 		GraphicsContext gc = canvas.getGraphicsContext2D();
 		dg = new DiceGroup(gc);
 		dg.drawDice(5);
-		canvas.setOnMouseClicked(this);
+		canvas.setOnMousePressed(this);
 		
 		HBox rolls = new HBox();
-		Button rollDice = new Button("Roll!");
+		rollDice = new Button("Roll!");
 		HBox.setMargin(rollDice, new Insets(5));
 		rolls.setAlignment(Pos.BASELINE_LEFT);
 		rollDice.setOnAction(e->{
-			if (numRolls < 3) {
+			if (numRolls < 3 && fieldsLeft > 0) {
 				dg.roll();
 				numRolls++;
 				lblRollsLeft.setText(String.valueOf(3 - numRolls));
@@ -95,12 +109,12 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 		mainWindow.setSpacing(15);
 		
 		stage.setScene(new Scene(root, 400, 500));
+		stage.setResizable(false);
 		stage.setTitle("Yathzee");
 		stage.show();
 	}
 
-	@Override
-	public void handle(MouseEvent mse)
+	@Override public void handle(MouseEvent mse)
 	{
 		if (numRolls > 0)
 			dg.lockDie(mse.getX(), mse.getY());
@@ -154,9 +168,15 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 	public void getScore(ScoreGroup x)
 	{
 		if (numRolls == 0) return;
+		for (int i = 1; i <=6; i++) {
+			if (dg.getDiceValues(i) == numDice) {
+				yathzees++;
+				break;
+			}
+		}
 		x.disable();
 		String selectedField = x.getTitle();
-		int score = 0, uscore = 0;
+		int lscore = 0, uscore = 0;
 		switch (selectedField) {
 		case "Ones":
 			uscore = dg.getDiceValues(1);
@@ -179,7 +199,7 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 		case "Three of a Kind":
 			for (int i = 1; i <=6; i++) {
 				if (dg.getDiceValues(i) >= 3) {
-					score = dg.getTotalScore();
+					lscore = dg.getTotalScore();
 					break;
 				}
 			}
@@ -187,7 +207,7 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 		case "Four of a Kind":
 			for (int i = 1; i <=6; i++) {
 				if (dg.getDiceValues(i) >= 4) {
-					score = dg.getTotalScore();
+					lscore = dg.getTotalScore();
 					break;
 				}
 			}
@@ -198,10 +218,10 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 				break;
 			}
 			boolean z = false;
-			for (int i = 1; i < 5; i++) {
+			for (int i = 1; i < numDice; i++) {
 				if (testSmall[i] == testSmall[i-1] + 1) {
 					if (i == 4) {
-						score = 30;
+						lscore = 30;
 						break;
 					}
 					else continue;
@@ -227,15 +247,15 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 					break;
 				}
 				if (i == 4) {
-					score = 30;
+					lscore = 30;
 				}
 			}
 			break;
 		case "Large Straight":
 			int[] testLarge = dg.getDiceValues(); //this array is sorted
-			for (int i = 1; i < 5; i++) {
+			for (int i = 1; i < numDice; i++) {
 				if (testLarge[i] == i + testLarge[0]) {
-					if (i == 4) score = 40;
+					if (i + 1 == numDice) lscore = 40;
 					else continue;
 				}
 				else {
@@ -245,8 +265,8 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 			break;
 		case "Full House":
 			for (int i = 1; i <=6; i++) {
-				if (dg.getDiceValues(i) == 5) {
-					score = 25; break;
+				if (dg.getDiceValues(i) == numDice) {
+					lscore = 25; break;
 				}
 				if (dg.getDiceValues(i) == 3) {
 					boolean fh = false;
@@ -256,7 +276,7 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 						}
 					}
 					if (fh) {
-						score = 25;
+						lscore = 25;
 						break;
 					}
 					else {
@@ -267,20 +287,20 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 			break;
 		case "Yathzee":
 			for (int i = 1; i <=6; i++) {
-				if (dg.getDiceValues(i) == 5) {
-					score = 50;
+				if (dg.getDiceValues(i) == numDice) {
+					lscore = 50;
 					break;
 				}
 			}
 		break;
 		case "Chance":
-			score = dg.getTotalScore();
+			lscore = dg.getTotalScore();
 			break;
 		default:
 		}
 		upperscore += uscore;
-		lowerscore += score;
-		x.setScore(Math.max(score, uscore));
+		lowerscore += lscore;
+		x.setScore(Math.max(lscore, uscore));
 		
 		numRolls = 0;
 		if (--fieldsLeft == 0) {
@@ -292,12 +312,113 @@ public class Yathzee extends Application implements EventHandler <MouseEvent>
 	
 	public void getTotalScore()
 	{
-		int totalScore = (upperscore >= 63) ? upperscore + lowerscore + 35 : upperscore + lowerscore;
+		int totalScore = 0;
+		int upperBonus = 35;
+		int upperThreshold = 63;
+		if (upperscore >= upperThreshold)
+			totalScore += upperBonus;
+		totalScore += lowerscore + upperscore;
+		String newHiscoreMessage = "";
+		if (yathzees > 1)
+			totalScore += (yathzees - 1) * 100;
+		rollDice.setDisable(true);
+		
+		Connection conn = getConnection();
+		try {
+			Statement stmt = conn.createStatement();
+			String toInsert = "INSERT INTO hiscores (user, score, date) VALUES(\"" + username + "\", \"" 
+					+ String.valueOf(totalScore) + "\", CURDATE())";
+			stmt.execute(toInsert);
+			String getHiscores = "SELECT score FROM hiscores ORDER BY score DESC LIMIT 10";
+			stmt.execute(getHiscores);
+			ResultSet rs = stmt.getResultSet();
+			rs.last();
+			if(rs.getInt(1) <= totalScore)
+				newHiscoreMessage = "New Hiscore!";
+			conn.close();
+		}
+		catch (SQLException sqle) {
+			System.out.println(sqle.getMessage());
+		}
 		
 		Alert alert = new Alert(AlertType.INFORMATION);
 		alert.setTitle("Game Finished!");
 		alert.setHeaderText(null);
-		alert.setContentText("Your final score is: " + totalScore);
+		alert.setContentText("Your final score is: " + totalScore + "\r\n" + newHiscoreMessage);
 		alert.showAndWait();
+	}
+	
+	private static Connection getConnection()
+	{
+		Connection conn = null;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost/yathzee";
+			String user = "root";
+			String pw = "";
+			conn = DriverManager.getConnection(url, user, pw);
+		}
+		catch (Exception e)
+		{
+			System.out.println("Database connection failed");
+		}
+		return conn;
+	}
+	
+	public void openSettings(Stage onStage)
+	{
+		final Stage settings = new Stage();
+		settings.initModality(Modality.APPLICATION_MODAL);
+		settings.initOwner(onStage);
+		VBox vboxSettings = new VBox();
+		HBox hboxUsername = new HBox();
+		hboxUsername.setSpacing(5);
+		vboxSettings.setSpacing(5);
+		TextField txtUsername = new TextField(username);
+		txtUsername.setPrefWidth(150);
+		hboxUsername.getChildren().addAll(new Label("Your name: "), txtUsername);
+		Button btnConfirm = new Button("Confirm Changes");
+		btnConfirm.setOnAction(f->{username = txtUsername.getText(); settings.close();});
+		vboxSettings.getChildren().addAll(hboxUsername, btnConfirm);
+		vboxSettings.setAlignment(Pos.CENTER);
+		settings.setScene(new Scene(vboxSettings, 250, 100));
+		settings.show();
+	}
+	
+	public void showHiscores(Stage onStage)
+	{
+		final Stage hiscores = new Stage();
+		hiscores.initModality(Modality.APPLICATION_MODAL);
+		hiscores.initOwner(onStage);
+		
+		Connection conn = getConnection();
+		ResultSet results;
+		HBox resultsTable = new HBox();
+		resultsTable.setSpacing(10);
+		Label lblTableHeader = new Label("The Best Scores");
+		lblTableHeader.setFont(new Font("Arial", 18));
+		VBox hiscoreTable = new VBox();
+		hiscoreTable.getChildren().addAll(lblTableHeader, resultsTable);
+		VBox colName = new VBox();
+		VBox colScore = new VBox();
+		VBox colDate = new VBox();
+		resultsTable.getChildren().addAll(colName, colScore, colDate);
+		try {
+			Statement stmt = conn.createStatement();
+			String fetchHiscores = "SELECT * FROM hiscores ORDER BY score DESC LIMIT 10";
+			stmt.execute(fetchHiscores);
+			results = stmt.getResultSet();
+			while (results.next()) {
+				colName.getChildren().add(new Label(results.getString(1)));
+				colScore.getChildren().add(new Label(results.getString(2)));
+				colDate.getChildren().add(new Label(results.getString(3)));
+			}
+		}
+		catch (SQLException e) {
+			System.out.println(e.getMessage());
+			return;
+		}
+		hiscores.setScene(new Scene(hiscoreTable, 260, 200));
+		hiscores.show();
 	}
 }
